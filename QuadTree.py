@@ -14,6 +14,8 @@ DEPTH = 0
 THRESHOLD = 8
 C = []
 Ct = []
+all_range = []
+all_domain = []
 
 input_arr = [
 [2, 5, 7, 0, 6, 2, 7, 7, 7, 3, 7, 0, 7, 1, 7, 7, 3, 0, 4, 3, 6, 4, 8, 1, 6, 1, 2, 3, 7, 3, 6, 6],
@@ -104,25 +106,42 @@ for i in range (0, N):
 # print(quantizedDCT)
 
 #################################################################
-# ENCODING
+# CREATING RANGE POOL
 #################################################################
-
 no_of_range_in_row = (int)(IMAGE_SIZE / 4)
-# print(np.array_split(input_arr[0], no_of_range_in_row))
-all_range = [[[[1,2,3,4]]]*M for i in range(N)]
-
 row = 0
+
 for i in range(0, no_of_range_in_row):
+    fourx32 = []
     for j in range(0, 4):
         t1 = np.array_split(input_arr[row], no_of_range_in_row)
+        fourx32.append(t1)
         row += 1
-    for k in range(8):
-        all_range[i][k].append(t1[k])
-        
-print(len(all_range))
-print(len(all_range[0]))
-for each_list in all_range[0][0]:
-    print(each_list)
-# print((all_range[0][0]))
+    fourxfour = np.hsplit(np.array(fourx32),8)
+    for each_element in fourxfour:
+        fourxfour_trial = np.reshape(each_element,(4,4))
+        all_range.append(fourxfour_trial)
 
-# all_ranges = [[[2,5,7,0],[],[],[]],[[6,2,7,7],[],[],[]],[[7,3,7,0],[],[],[]],[[7,1,7,7],[],[],[]],[[3,0,4,3],[],[],[]],[[6,4,8,1],[],[],[]],[[6,1,2,3],[],[],[]],[[7,3,6,6],[],[],[]]]
+#################################################################
+# CREATING DOMAIN POOL
+#################################################################
+
+no_of_domain_in_row = IMAGE_SIZE - M - 1
+temp_input_arr = input_arr
+temp_domain = [[0]*M for i in range(N)]
+
+row_overlaps = 0
+col_overlaps = 0
+print(len(input_arr[0]))
+while(col_overlaps < len(input_arr[0])-7):
+    while(row_overlaps < len(input_arr[0])-7):
+        temp_domain = [[0]*M for i in range(N)]
+        for i in range (8):
+            for j in range (8):
+                temp_domain[i][j] = input_arr[i + col_overlaps][j+row_overlaps]
+        all_domain.append(temp_domain)
+        row_overlaps += 1
+    col_overlaps += 1
+    row_overlaps = 0
+
+
