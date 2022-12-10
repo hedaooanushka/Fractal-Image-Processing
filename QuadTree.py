@@ -1,7 +1,8 @@
-import math
 import numpy as np
 import pandas as pd
+from scipy.fft import fft, dct, idct
 import cv2
+import math
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -98,6 +99,7 @@ for i in range (1, IMAGE_ROWS):
         C[ i ][ j ] = math.sqrt( 2.0 / IMAGE_ROWS ) * math.cos( (( 2 * j + 1 ) * i * PI )/ ( 2.0 * IMAGE_ROWS ) )
         Ct[ j ][ i ] = C[ i ][ j ]
 
+print(f"\n Cosine matrix: \n {C}")
 
 ##########################################################################
 # Performing DCT on 8x8 block (input --> intermediate --> DCT) Ct*input*C
@@ -116,6 +118,10 @@ for i in range(IMAGE_ROWS):
         for k in range(N):
             DCT[i][j] += intermediate[i][k] * C[k][j]
 
+print(f"\n DCT without quantization: \n {DCT}")
+
+original_scipy = idct(DCT)
+print(f"\n Inverse DCT using scipy: \n {original_scipy}")
 
 #################################################################
 # Quantization according to the QUALITY factor = 2
@@ -142,7 +148,7 @@ for i in range (0, IMAGE_ROWS):
 print(f"\n Qunatized DCT: \n {quantizedDCT}")
 
 # Updating input array with quantized DCT array
-input_arr = np.array(quantizedDCT)
+# input_arr = np.array(quantizedDCT)
 print(f"\n Updated input arrray: \n {input_arr}")
 
 ################### DOUBT ##############################
@@ -251,7 +257,7 @@ def find_contrast(range_intensity, domain_intensity, case_info):
         sum_r += range_intensity[key]
         sum_d += domain_intensity[key]
         sum_d2 += (domain_intensity[key] * domain_intensity[key])
-    s = ((case_info["hex_count"] * sum_prod) - (sum_d* sum_r)) / (case_info["hex_count"] * sum_d2)
+    s = ((case_info["hex_count"] * sum_prod) - (sum_d* sum_r)) / ((case_info["hex_count"] * (sum_d2)) - sum_d2)
     # final rms_error results in NaN if denominator becomes 0, have to handle this
     return s
 
@@ -349,6 +355,7 @@ for i in range(len(all_range)):
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
             rms_error = find_rms_error(range_intensity, domain_intensity, case_info)
+            print(rms_error)
             if(rms_error < best_rms_error):
                 best_rms_error = rms_error       
     else:
@@ -357,6 +364,7 @@ for i in range(len(all_range)):
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
             rms_error = find_rms_error(range_intensity, domain_intensity, case_info)
+            print(rms_error)
             if(rms_error < best_rms_error):
                 best_rms_error = rms_error 
     print(f"Range {i} error = {best_rms_error}")
