@@ -26,8 +26,11 @@ Ct = []
 all_range = []
 all_ranges_indexes = []
 edge_ranges = []
+edge_ranges_indexes = []
 edge_domains = []
+edge_domains_indexes = []
 not_edge_domains = []
+not_edge_domains_indexes = []
 
 hex_squares_case1 = {
     1: [(0, 0), (0, 1)],
@@ -300,6 +303,7 @@ for i in range(no_of_range_in_row):
         features_range = check_features(edges[row:row+4, col:col+4])
         if (features_range["edge"]):
             edge_ranges.append(temp_range)
+            edge_ranges_indexes.append((row,col))
         col += 4
     row += 4
     col = 0
@@ -332,8 +336,10 @@ while(col_overlaps < len(input_arr[0])-7):
         features = check_features(edges[col_overlaps:col_overlaps+8, row_overlaps:row_overlaps+8])
         if (features_range["edge"]):
             edge_domains.append(temp_domain)
+            edge_domains_indexes.append((col_overlaps, row_overlaps))
         else:
             not_edge_domains.append(temp_domain)
+            not_edge_domains_indexes.append((col_overlaps, row_overlaps))
         row_overlaps += 1
     col_overlaps += 1
     row_overlaps = 0
@@ -345,29 +351,58 @@ print(f"\n Printing length of not_edge_domains: {len(not_edge_domains)}")
 # MAIN ALGORITHM
 # #################################################################
 
+def set_encoding_file_data(range_index, domain_index, best_rms, isEdge, index):
+    encoding_data = pd.DataFrame(
+        {
+        "Range_index": str(range_index),
+        "Domain_index" : str(domain_index),
+        "best_rms": best_rms,
+        "isEdge": isEdge
+        },
+        index=[index]
+    )
+    return encoding_data
+encoding_file_data = []
+encoding_file_index = 0
 for i in range(len(all_range)):
     case_info = find_case(i)
     best_rms_error = 1000000000
     range_intensity = find_hex_intensity(all_range[i], case_info["case_no"])
     if all_range[i] not in edge_ranges:
-        for domain_block in not_edge_domains:
-            domain_block = np.array(domain_block)
+        for j in range(len(not_edge_domains)):
+            domain_block = np.array(not_edge_domains[j])
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
             rms_error = find_rms_error(range_intensity, domain_intensity, case_info)
             print(rms_error)
             if(rms_error < best_rms_error):
-                best_rms_error = rms_error       
+                best_rms_error = rms_error
+                encoding_file_index+=1
+                temp_data = set_encoding_file_data(all_ranges_indexes[i],not_edge_domains_indexes[j],best_rms_error,False,encoding_file_index)
+                encoding_file_data.append(temp_data)
+                       
     else:
-        for domain_block in edge_domains:
-            domain_block = np.array(domain_block)
+        for j in range(len(edge_domains)):
+            domain_block = np.array(edge_domains[j])
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
             rms_error = find_rms_error(range_intensity, domain_intensity, case_info)
             print(rms_error)
             if(rms_error < best_rms_error):
-                best_rms_error = rms_error 
+                best_rms_error = rms_error
+                encoding_file_index += 1
+                encoding_file_data.append(set_encoding_file_data(all_ranges_indexes[i],edge_domains_indexes[j],best_rms_error,True, encoding_file_index))
+                       
     print(f"Range {i} error = {best_rms_error}")
+
+# Creating the dataframe
+
+final_data = pd.concat(encoding_file_data)
+
+
+print(final_data.head())
+
+final_data.to_csv('encoding.csv', sep='\t', encoding='utf-8')
 
 # if all above is correct, we need to create a dictionary with all the required information to decode and add it to the encoding.py file 
 
