@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.fft import fft, dct, idct
 import cv2
 import math
+from PIL import Image as im
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -12,15 +13,13 @@ N = 8  # rows
 M = 8  # columns
 #  have to delete M and N variables once we figure out what to replace them with (either IMAGE_ROWS or IMAGE_COLS) on lines 110, 115
 PI = 3.14
-IMAGE_ROWS = 8
-IMAGE_COLS = 8
+IMAGE_ROWS = 64
+IMAGE_COLS = 64
 QUALITY = 2
 RANGE_SIZE = 4
-DOMAIN_SIZE = 5
-DEPTH_MIN = 1
-DEPTH_MAX = 3
-DEPTH = 0
+DOMAIN_SIZE = 8
 THRESHOLD = 8
+
 C = []
 Ct = []
 all_range = []
@@ -82,93 +81,67 @@ edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200) # Canny Edge D
 
 
 input_arr = img_gray[0:IMAGE_ROWS, 0:IMAGE_COLS]
-print(f"Printing input array: \n {input_arr}")
+# print(f"Printing input array: \n {input_arr}")
 
 edges = edges[0:IMAGE_ROWS, 0:IMAGE_COLS]
-print(f"Printing edges array: \n {edges}")
+# print(f"Printing edges array: \n {edges}")
 
 #################################################################
-# Creating the cosine matrix and the transposed cosine matrix
-#################################################################
-C = [[0.0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
-Ct = [[0.0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
-
-for j in range (0, IMAGE_ROWS):
-    C[0][j] = 1.0 / math.sqrt(IMAGE_ROWS)
-    Ct[j][0] = C[0][j]
-    
-for i in range (1, IMAGE_ROWS):
-    for j in range(0, IMAGE_COLS):
-        C[ i ][ j ] = math.sqrt( 2.0 / IMAGE_ROWS ) * math.cos( (( 2 * j + 1 ) * i * PI )/ ( 2.0 * IMAGE_ROWS ) )
-        Ct[ j ][ i ] = C[ i ][ j ]
-
-# print(f"\n Cosine matrix: \n {C}")
-
-##########################################################################
-# Performing DCT on 8x8 block (input --> intermediate --> DCT) Ct*input*C
-##########################################################################
-
-intermediate  = [ [0.0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
-DCT  = [ [0.0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
-
-for i in range(IMAGE_ROWS):
-    for j in range(IMAGE_COLS):
-        for k in range(N):   # either IMAGE_ROWS or IMAGE_COLS
-            intermediate[i][j] += Ct[i][k] * input_arr[k][j]
-
-for i in range(IMAGE_ROWS):
-    for j in range(IMAGE_COLS):
-        for k in range(N):
-            DCT[i][j] += intermediate[i][k] * C[k][j]
-
-# print(f"\n DCT without quantization: \n {DCT}")
-
-# original_scipy = idct(DCT)
-# print(f"\n Inverse DCT using scipy: \n {original_scipy}")
-
-#################################################################
-# Quantization according to the QUALITY factor = 2
+# ALL FUNCTIONS
 #################################################################
 
-quantum = [[0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
-quantizedDCT = [[0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
+def create_cosine_matrix(C , Ct):
+    matrix_dict = {
+        "C": [],
+        "Ct": []
+    }
+    for j in range (0, IMAGE_ROWS):
+        C[0][j] = 1.0 / math.sqrt(IMAGE_ROWS)
+        Ct[j][0] = C[0][j]
+        
+    for i in range (1, IMAGE_ROWS):
+        for j in range(0, IMAGE_COLS):
+            C[i][j] = math.sqrt(2.0 / IMAGE_ROWS) * math.cos((( 2 * j + 1 ) * i * PI) / (2.0 * IMAGE_ROWS))
+            Ct[j][i] = C[i][j]
 
-# Defining the quantization matrix
-for i in range (0, IMAGE_ROWS):
-    for j in range(0, IMAGE_COLS):
-        quantum[i][j] = 1 + ((1 + i + j) * QUALITY)
+    matrix_dict["C"] = C
+    matrix_dict["Ct"] = Ct
+    return matrix_dict
 
-# Final updated DCT matrix with quantization
-for i in range (0, IMAGE_ROWS):
-    for j in range(0, IMAGE_COLS):
-        quantizedDCT[i][j] = DCT[i][j] / quantum[i][j]
+##################################
 
-# Converting elements to integers
-for i in range (0, IMAGE_ROWS):
-    for j in range(0, IMAGE_COLS):
-        quantizedDCT[i][j] = int(quantizedDCT[i][j])
+def perform_DCT(C, Ct, input_arr):
+    for i in range(IMAGE_ROWS):
+        for j in range(IMAGE_COLS):
+            for k in range(IMAGE_ROWS):   # either IMAGE_ROWS or IMAGE_COLS
+                intermediate[i][j] += Ct[i][k] * input_arr[k][j]
 
-print(f"\n Qunatized DCT: \n {quantizedDCT}")
+    for i in range(IMAGE_ROWS):
+        for j in range(IMAGE_COLS):
+            for k in range(IMAGE_ROWS):
+                DCT[i][j] += intermediate[i][k] * C[k][j]
+    return DCT
 
-# Updating input array with quantized DCT array
-input_arr = np.array(quantizedDCT)
-print(f"\n Updated input arrray: \n {input_arr}")
+#################################
 
-################### DOUBT ##############################
+def quantize(quantum, DCT, quantizedDCT, QUALITY):
+    # Defining the quantization matrix
+    for i in range (0, IMAGE_ROWS):
+        for j in range(0, IMAGE_COLS):
+            quantum[i][j] = 1 + ((1 + i + j) * QUALITY)
 
-# Do we have to find edges on the original input array or on the transformed quantized DCT array?
+    # Final updated DCT matrix with quantization
+    for i in range (0, IMAGE_ROWS):
+        for j in range(0, IMAGE_COLS):
+            quantizedDCT[i][j] = DCT[i][j] / quantum[i][j]
 
-#  if find edge on quantized array
-    # img_gray = cv2.cvtColor(input_arr, cv2.COLOR_BGR2GRAY)
-    # img_blur = cv2.GaussianBlur(img_gray, (3,3), 0) 
-    # edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200) # Canny Edge Detection
-    # print(f"Printing UPDATED edges array: \n {edges}")
+    # Converting elements to integers
+    for i in range (0, IMAGE_ROWS):
+        for j in range(0, IMAGE_COLS):
+            quantizedDCT[i][j] = int(quantizedDCT[i][j])
+    return quantizedDCT
 
-#  But here, cv2.cvtColor(input_arr, cv2.COLOR_BGR2GRAY), input array must be 3d, i.e. color image with 3 channels RGB
-
-#################################################################
-# FUNCTIONS FOR CLASSIFICATION
-#################################################################
+#################################
 
 def is_edge(block):
     if np.sum(block) > 0:
@@ -194,7 +167,7 @@ def convert_domain_to_4x4(domain_block):
     for i in range(4):
         for j in range(4):
             local_pixels = domain_block[cols:cols+2, rows:rows+2]
-            sum = local_pixels[0][0] + local_pixels[0][1] + local_pixels[1][0] + local_pixels[1][1]
+            sum = np.int64(local_pixels[0][0]) + np.int64(local_pixels[0][1]) + np.int64(local_pixels[1][0]) + np.int64(local_pixels[1][1])
             sum /= 4
             fourx4.append(int(sum))
             rows += 2
@@ -273,46 +246,68 @@ def find_brightness(range_intensity, domain_intensity, case_info, contrast):
         sum_r += range_intensity[key]
         sum_d += domain_intensity[key]
     o = (sum_r - (contrast * sum_d)) / case_info["hex_count"]
-    print(o)
     return o
 
 ##################################
 
-def find_rms_error(range_intensity, domain_intensity, case_info):
+def find_rms_error(range_intensity, domain_intensity, contrast, brightness):
     R = 0
-    contrast = find_contrast(range_intensity, domain_intensity, case_info)
-    brightness = find_brightness(range_intensity, domain_intensity, case_info, contrast)
     for key in range_intensity:
         x = contrast * domain_intensity[key] + brightness - range_intensity[key]
         R += pow(x, 2)
     return math.sqrt(R)
 
+##################################
 
-# #################################################################
+def save_image(image_name, IMAGE_ROWS, IMAGE_COLS):
+    image_name = im.fromarray(input_arr[0:IMAGE_ROWS, 0:IMAGE_COLS])
+    image_name.save('image_name.png')
+
+
+
+#################################################################
+# Creating Cosine matrix, performing DT and Quantization
+#################################################################
+C = [[0.0] * IMAGE_COLS for i in range(IMAGE_ROWS)]
+Ct = [[0.0] * IMAGE_COLS for i in range(IMAGE_ROWS)]
+
+intermediate  = [[0.0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
+DCT  = [[0.0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
+
+quantum = [[0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
+quantizedDCT = [[0]*IMAGE_COLS for i in range(IMAGE_ROWS)]
+
+matrix_dict = create_cosine_matrix(C, Ct)
+C = matrix_dict["C"]
+Ct = matrix_dict["Ct"]
+DCT = perform_DCT(C, Ct, input_arr)
+quantizedDCT = quantize(quantum, DCT, quantizedDCT, QUALITY)
+input_arr = np.array(quantizedDCT)
+
+# Printing matrix
+# print(f"\n Cosine Matrix: \n {C}")
+# print(f"\n DCT: \n {DCT}")
+# print(f"\n Quantized DCT: \n {quantizedDCT}")
+# print(f"\n Updated input arrray: \n {input_arr}")
+
+# original_scipy = idct(DCT)
+# print(f"\n Inverse DCT using scipy: \n {original_scipy}")
+
+################### DOUBT ##############################
+
+# Do we have to find edges on the original input array or on the transformed quantized DCT array?
+
+#  if find edge on quantized array
+    # img_gray = cv2.cvtColor(input_arr, cv2.COLOR_BGR2GRAY)
+    # img_blur = cv2.GaussianBlur(img_gray, (3,3), 0) 
+    # edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200) # Canny Edge Detection
+    # print(f"Printing UPDATED edges array: \n {edges}")
+
+#  But here, cv2.cvtColor(input_arr, cv2.COLOR_BGR2GRAY), input array must be 3d, i.e. color image with 3 channels RGB
+
+#################################################################
 # CREATING RANGE POOL AND CLASSIFY
-# #################################################################
-
-# input_arr = [
-#     [1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1]
-# ]
-
-# edges = [
-#     [6, 7, 7, 8, 4, 1, 4, 2],
-#     [3, 6, 1, 2, 8, 8, 4, 8],
-#     [4, 3, 2, 1, 8, 7, 2, 2],
-#     [6, 2, 8, 8, 6, 0, 3, 4],
-#     [6, 5, 4, 1, 3, 6, 0, 0],
-#     [0, 7, 7, 8, 6, 7, 3, 3],
-#     [7, 3, 5, 5, 7, 3, 2, 0],
-#     [7, 3, 5, 6, 4, 5, 0, 7]
-# ]
+#################################################################
 
 input_arr = np.array(input_arr)
 edges = np.array(edges)
@@ -335,17 +330,17 @@ for i in range(no_of_range_in_row):
     row += 4
     col = 0
 
-print(f"\n Printing all_range: {all_range}")
-print(f"\n edge_ranges list = {edge_ranges}")
+# print(f"\n Printing all_range: {all_range}")
+# print(f"\n edge_ranges list = {edge_ranges}")
 # print(f"\n all_ranges_indexes list = {all_ranges_indexes}")
 # print(f"\n edge_ranges_indexes list = {edge_ranges_indexes}")
 print(f"\n Printing length of all_range: {len(all_range)}")
 print(f"\n Length of edge_ranges list = {len(edge_ranges)}")
 
 
-# #################################################################
+#################################################################
 # CREATING DOMAIN POOL AND CLASSIFY
-# #################################################################
+#################################################################
 
 no_of_domain_in_row = IMAGE_COLS - DOMAIN_SIZE + 1
 temp_input_arr = input_arr
@@ -362,9 +357,7 @@ while(col_overlaps < no_of_domain_in_row):
         # classifying domains
         # print(f"Checking features on this array {edges[col_overlaps:col_overlaps+DOMAIN_SIZE, row_overlaps:row_overlaps+DOMAIN_SIZE]}")
         features_range = check_features(edges[col_overlaps:col_overlaps+DOMAIN_SIZE, row_overlaps:row_overlaps+DOMAIN_SIZE])
-        # print(features_range)
         if (features_range["edge"]):
-            # print("adding to edge domain")
             edge_domains.append(temp_domain)
             edge_domains_indexes.append((col_overlaps, row_overlaps))
         else:
@@ -375,8 +368,8 @@ while(col_overlaps < no_of_domain_in_row):
     row_overlaps = 0
 
 
-print(f"\n edge_domains list = {edge_domains}")
-print(f"\n not_edge_domains list = {not_edge_domains}")
+# print(f"\n edge_domains list = {edge_domains}")
+# print(f"\n not_edge_domains list = {not_edge_domains}")
 print(f"\n Printing length of edge_domains: {len(edge_domains)}")
 print(f"\n Printing length of not_edge_domains: {len(not_edge_domains)}")
 
@@ -384,11 +377,15 @@ print(f"\n Printing length of not_edge_domains: {len(not_edge_domains)}")
 # MAIN ALGORITHM
 # #################################################################
 
-def set_encoding_file_data(range_index, domain_index, best_rms, isEdge, index):
+def set_encoding_file_data(range_index, domain_index, contrast, brightness, best_rms, isEdge, index):
     encoding_data = pd.DataFrame(
         {
-        "Range_index": str(range_index),
-        "Domain_index" : str(domain_index),
+        "Range_index_row": range_index[0],
+        "Range_index_col": range_index[1],
+        "Domain_index_row" : domain_index[0],
+        "Domain_index_col" : domain_index[1],
+        "contrast": contrast,
+        "brightness": brightness,
         "best_rms": best_rms,
         "isEdge": isEdge
         },
@@ -397,44 +394,49 @@ def set_encoding_file_data(range_index, domain_index, best_rms, isEdge, index):
     return encoding_data
 
 encoding_file_data = []
-encoding_file_index = 0.
+encoding_file_index = 0
 
 for i in range(len(all_range)):
+    print(f"############ Range {i} ############")
     case_info = find_case(i)
     best_rms_error = 1000000000
-    range_index = 0
-    domain_index = 0
+    range_index = (0, 0)
+    domain_index = (0, 0)
+    contrast = 0
+    brightness = 0
     range_intensity = find_hex_intensity(all_range[i], case_info["case_no"])
-    # print(all_ranges_indexes[i])
     if all_ranges_indexes[i] not in edge_ranges_indexes:
-    # if all_range[i] not in edge_ranges:
         for j in range(len(not_edge_domains)):
             domain_block = np.array(not_edge_domains[j])
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
-            rms_error = find_rms_error(range_intensity, domain_intensity, case_info)
-            if(rms_error < best_rms_error):
-                best_rms_error = rms_error
-                range_index = all_ranges_indexes[i]
-                domain_index = not_edge_domains_indexes[j]
-        encoding_file_index+=1
-        temp_data = set_encoding_file_data(range_index, domain_index, best_rms_error, False,encoding_file_index)
-        encoding_file_data.append(temp_data)
-                       
-    else:
-        # print("Inside edges")
-        for j in range(len(edge_domains)):
-            domain_block = np.array(edge_domains[j])
-            domain_block = convert_domain_to_4x4(domain_block)
-            domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
-            rms_error = find_rms_error(range_intensity, domain_intensity, case_info)
+            contrast = find_contrast(range_intensity, domain_intensity, case_info)
+            brightness = find_brightness(range_intensity, domain_intensity, case_info, contrast)
+            rms_error = find_rms_error(range_intensity, domain_intensity, contrast, brightness)
             # print(f"error:{rms_error}")
             if(rms_error < best_rms_error):
                 best_rms_error = rms_error
                 range_index = all_ranges_indexes[i]
                 domain_index = not_edge_domains_indexes[j]
         encoding_file_index+=1
-        temp_data = set_encoding_file_data(range_index, domain_index, best_rms_error, True, encoding_file_index)
+        temp_data = set_encoding_file_data(range_index, domain_index, contrast, brightness, best_rms_error, False, encoding_file_index)
+        encoding_file_data.append(temp_data)
+                       
+    else:
+        for j in range(len(edge_domains)):
+            domain_block = np.array(edge_domains[j])
+            domain_block = convert_domain_to_4x4(domain_block)
+            domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
+            contrast = find_contrast(range_intensity, domain_intensity, case_info)
+            brightness = find_brightness(range_intensity, domain_intensity, case_info, contrast)
+            rms_error = find_rms_error(range_intensity, domain_intensity, contrast, brightness)
+            # print(f"error:{rms_error}")
+            if(rms_error < best_rms_error):
+                best_rms_error = rms_error
+                range_index = all_ranges_indexes[i]
+                domain_index = edge_domains_indexes[j]
+        encoding_file_index+=1
+        temp_data = set_encoding_file_data(range_index, domain_index, contrast, brightness, best_rms_error, True, encoding_file_index)
         encoding_file_data.append(temp_data)
                        
     # print(f"Range {i} error = {best_rms_error}")
@@ -443,8 +445,9 @@ for i in range(len(all_range)):
 # Creating the dataframe
 final_data = pd.concat(encoding_file_data)
 print(final_data.head())
-final_data.to_csv('encoding.csv', sep='\t', encoding='utf-8', index=False)
+final_data.to_csv('dct_32_encoding.csv', sep='\t', encoding='utf-8', index=False)
 
+save_image("Lenna_crop_32", IMAGE_ROWS, IMAGE_COLS)
 
 
 # If we don't quantized --> 
