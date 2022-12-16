@@ -8,17 +8,12 @@ from PIL import Image as im
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 
-
-N = 8  # rows
-M = 8  # columns
-#  have to delete M and N variables once we figure out what to replace them with (either IMAGE_ROWS or IMAGE_COLS) on lines 110, 115
 PI = 3.14
-IMAGE_ROWS = 64
-IMAGE_COLS = 64
+IMAGE_ROWS = 32
+IMAGE_COLS = 32
 QUALITY = 2
 RANGE_SIZE = 4
 DOMAIN_SIZE = 8
-THRESHOLD = 8
 
 C = []
 Ct = []
@@ -81,7 +76,7 @@ edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200) # Canny Edge D
 
 
 input_arr = img_gray[0:IMAGE_ROWS, 0:IMAGE_COLS]
-# print(f"Printing input array: \n {input_arr}")
+print(f"Printing input array: \n {input_arr}")
 
 edges = edges[0:IMAGE_ROWS, 0:IMAGE_COLS]
 # print(f"Printing edges array: \n {edges}")
@@ -233,7 +228,16 @@ def find_contrast(range_intensity, domain_intensity, case_info):
         sum_r += range_intensity[key]
         sum_d += domain_intensity[key]
         sum_d2 += (domain_intensity[key] * domain_intensity[key])
-    s = ((case_info["hex_count"] * sum_prod) - (sum_d* sum_r)) / ((case_info["hex_count"] * (sum_d2)) - sum_d2)
+    # print(sum_prod)
+    # print(sum_r)
+    # print(sum_d)
+    # print(sum_d2)
+    if ((case_info["hex_count"] * (sum_d2)) - sum_d2) != 0:
+        s = ((case_info["hex_count"] * sum_prod) - (sum_d* sum_r)) / ((case_info["hex_count"] * (sum_d2)) - sum_d2)
+    else:
+        s = 0
+    # print(s)
+    # print()
     # final rms_error results in NaN if denominator becomes 0, have to handle this
     return s
 
@@ -264,7 +268,6 @@ def save_image(image_name, IMAGE_ROWS, IMAGE_COLS):
     image_name.save('image_name.png')
 
 
-
 #################################################################
 # Creating Cosine matrix, performing DT and Quantization
 #################################################################
@@ -288,7 +291,7 @@ input_arr = np.array(quantizedDCT)
 # print(f"\n Cosine Matrix: \n {C}")
 # print(f"\n DCT: \n {DCT}")
 # print(f"\n Quantized DCT: \n {quantizedDCT}")
-# print(f"\n Updated input arrray: \n {input_arr}")
+print(f"\n Updated input arrray: \n {input_arr}")
 
 # original_scipy = idct(DCT)
 # print(f"\n Inverse DCT using scipy: \n {original_scipy}")
@@ -405,11 +408,13 @@ for i in range(len(all_range)):
     contrast = 0
     brightness = 0
     range_intensity = find_hex_intensity(all_range[i], case_info["case_no"])
+    # print(f"Range Intensity = {range_intensity}")
     if all_ranges_indexes[i] not in edge_ranges_indexes:
         for j in range(len(not_edge_domains)):
             domain_block = np.array(not_edge_domains[j])
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
+            # print(f"Domain Intensity = {domain_intensity}")
             contrast = find_contrast(range_intensity, domain_intensity, case_info)
             brightness = find_brightness(range_intensity, domain_intensity, case_info, contrast)
             rms_error = find_rms_error(range_intensity, domain_intensity, contrast, brightness)
@@ -427,6 +432,7 @@ for i in range(len(all_range)):
             domain_block = np.array(edge_domains[j])
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
+            # print(f"Domain Intensity = {domain_intensity}")
             contrast = find_contrast(range_intensity, domain_intensity, case_info)
             brightness = find_brightness(range_intensity, domain_intensity, case_info, contrast)
             rms_error = find_rms_error(range_intensity, domain_intensity, contrast, brightness)
@@ -445,9 +451,9 @@ for i in range(len(all_range)):
 # Creating the dataframe
 final_data = pd.concat(encoding_file_data)
 print(final_data.head())
-final_data.to_csv('dct_32_encoding.csv', sep='\t', encoding='utf-8', index=False)
+final_data.to_csv('org_32_encoding_range2.csv', sep='\t', encoding='utf-8', index=False)
 
-save_image("Lenna_crop_32", IMAGE_ROWS, IMAGE_COLS)
+# save_image("Lenna_crop_32", IMAGE_ROWS, IMAGE_COLS)
 
 
 # If we don't quantized --> 

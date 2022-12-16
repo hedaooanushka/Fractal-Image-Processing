@@ -46,8 +46,8 @@ img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 img_blur = cv2.GaussianBlur(img_gray, (3,3), 0) 
 edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200) # Canny Edge Detection
 
-
-input_arr = img_gray[0:IMAGE_ROWS, 0:IMAGE_COLS]
+org_input_arr = np.array(img_gray[0:IMAGE_ROWS, 0:IMAGE_COLS])
+input_arr = np.array(img_gray[0:IMAGE_ROWS, 0:IMAGE_COLS])
 print(f"Printing input array: \n {input_arr}")
 
 edges = edges[0:IMAGE_ROWS, 0:IMAGE_COLS]
@@ -132,9 +132,34 @@ def convert_domain_to_4x4(domain_block):
 
 ###################################
 
+def find_PSNR(original, compressed):
+    # mse = 0
+    # for i in range(original.shape[0]):
+    #     for j in range(original.shape[1]):
+    #         print(original[i][j])
+    #         print(compressed[i][j])
+    #         print(original[i][j] - compressed[i][j])
+    #         mse += ((original[i][j] - compressed[i][j]) ** 2)
+    #         print(mse)
+    #         break
+    #     break
+    # print(mse)
+    # mse /= (IMAGE_ROWS * IMAGE_COLS)
+    mse = np.mean((original - compressed) ** 2)
+    print(mse)
+    if (mse == 0):
+        return 100
+    max_pixel= 254
+    psnr = 20 * math.log10(max_pixel / math.sqrt(mse))
+    return psnr 
+
+
+
+###################################
+
 def save_image(image_name, input_arr):
     image_name = im.fromarray(input_arr)
-    image_name.save('image_name.png')
+    image_name.save(f"{image_name}.png")
 
 #################################################################
 # Creating Cosine matrix, performing DT and Quantization
@@ -161,31 +186,54 @@ print(f"\n Updated input arrray: \n {input_arr}")
 # Read Encoding File
 #################################################################
 
-df = pd.read_csv("encoding.csv", delimiter="\t")
+df = pd.read_csv("org_128_encoding.csv", delimiter="\t")
 print(df.head())
 
-
-for iteration in range(0, 10):
-    print(f"Iteration {iteration}")
-    for i in range(df.shape[0]):
-        range_start_row = df.iloc[i].Range_index_row
-        range_start_col = df.iloc[i].Range_index_col
-        domain_start_row = df.iloc[i].Domain_index_row
-        domain_start_col = df.iloc[i].Domain_index_col
-        range_block = input_arr[range_start_row: range_start_row+4, range_start_col: range_start_col+4]
-        domain_block = input_arr[domain_start_row: domain_start_row+8, domain_start_col: domain_start_col+8]
-        domain_block = convert_domain_to_4x4(domain_block)
-        for x in range(domain_block.shape[0]):
-            for y in range(domain_block.shape[1]):
-                domain_block[x][y] = int((domain_block[x][y] * df.iloc[i].contrast) + df.iloc[i].brightness)
-        for x in range(range_block.shape[0]):
-            for y in range(range_block.shape[1]):
-                range_block[x][y] = domain_block[x][y]
+for i in range(df.shape[0]):
+    range_start_row = df.iloc[i].Range_index_row
+    range_start_col = df.iloc[i].Range_index_col
+    domain_start_row = df.iloc[i].Domain_index_row
+    domain_start_col = df.iloc[i].Domain_index_col
+    range_block = input_arr[range_start_row: range_start_row+4, range_start_col: range_start_col+4]
+    domain_block = input_arr[domain_start_row: domain_start_row+8, domain_start_col: domain_start_col+8]
+    domain_block = convert_domain_to_4x4(domain_block)
+    for x in range(domain_block.shape[0]):
+        for y in range(domain_block.shape[1]):
+            domain_block[x][y] = int((domain_block[x][y] * df.iloc[i].contrast) + df.iloc[i].brightness)
+    for x in range(range_block.shape[0]):
+        for y in range(range_block.shape[1]):
+            range_block[x][y] = domain_block[x][y]
     
-print(f"Decoded Array")
-print(input_arr)
+# print(f"Decoded Array")
+# print(input_arr)
 
-save_image("decoded_image", input_arr)
+
+###################################################
+# If applying DCT
+###################################################
+
+# final_dct_128 = idct(input_arr)
+# print(f"\n Inverse DCT using scipy: \n {final_dct_128}")
+
+# # Converting elements to integers
+# for i in range (0, IMAGE_ROWS):
+#     for j in range(0, IMAGE_COLS):
+#         final_dct_128[i][j] = int(final_dct_128[i][j])
+
+###################################################
+# Find PSNR Value
+###################################################
+
+# print(org_input_arr)
+# print(input_arr)
+PSNR = find_PSNR(org_input_arr, input_arr)
+print(f"PSNR value = {PSNR}")
+
+###################################################
+# Save Image
+###################################################
+
+# save_image("final_dct_128", input_arr)
 
 
   
