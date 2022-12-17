@@ -112,7 +112,7 @@ hex_squares_case3 = {
 # Read Data
 ##########################################
 
-img = cv2.imread('Lenna.png') 
+img = cv2.imread('./Test Image/test2.png') 
 img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 img_blur = cv2.GaussianBlur(img_gray, (3,3), 0) 
 edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200) # Canny Edge Detection
@@ -253,8 +253,6 @@ def find_hex_intensity(block, case):
     for key in case:
         sq_pixel_sum = 0
         for i in range(len(case[key])):
-            print(block[case[key][i][0]])
-            print(case[key][i+1])
             sq_pixel_sum += block[case[key][i][0]][case[key][i][1]] * case[key][i+1]
             i += 2
         # for co_ordinate in case[key]:
@@ -499,7 +497,7 @@ for i in range(len(all_range)):
 # Creating the dataframe
 final_data = pd.concat(encoding_file_data)
 print(final_data.head())
-final_data.to_csv('lenna_encoding_8_weighted_average.csv', sep='\t', encoding='utf-8', index=False)
+final_data.to_csv('koala_encoding_200.csv', sep='\t', encoding='utf-8', index=False)
 
 # save_image("Lenna_crop_32", IMAGE_ROWS, IMAGE_COLS)
 
