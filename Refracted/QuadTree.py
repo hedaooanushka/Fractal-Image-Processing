@@ -9,8 +9,8 @@ pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 
 PI = 3.14
-IMAGE_ROWS = 8
-IMAGE_COLS = 8
+IMAGE_ROWS = 16
+IMAGE_COLS = 16
 QUALITY = 2
 RANGE_SIZE = 4
 DOMAIN_SIZE = 8
@@ -112,7 +112,8 @@ hex_squares_case3 = {
 # Read Data
 ##########################################
 
-img = cv2.imread('./Test Image/test2.png') 
+img = cv2.imread('koala.png') 
+print(img)
 img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 img_blur = cv2.GaussianBlur(img_gray, (3,3), 0) 
 edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200) # Canny Edge Detection
@@ -457,6 +458,7 @@ for i in range(len(all_range)):
     # print(f"Range Intensity = {range_intensity}")
     if all_ranges_indexes[i] not in edge_ranges_indexes:
         for j in range(len(not_edge_domains)):
+            print("Inside not edge domains")
             domain_block = np.array(not_edge_domains[j])
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])
@@ -475,6 +477,7 @@ for i in range(len(all_range)):
                        
     else:
         for j in range(len(edge_domains)):
+            print("Inside edge domains ")
             domain_block = np.array(edge_domains[j])
             domain_block = convert_domain_to_4x4(domain_block)
             domain_intensity = find_hex_intensity(domain_block, case_info["case_no"])

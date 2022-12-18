@@ -387,9 +387,7 @@ class File_Operations(Range_Domain_Processing):
             domain_index = (0, 0)
             contrast = 0
             brightness = 0
-            range_intensity = self.find_hex_intensity(
-                all_range[i], case_info["case_no"]
-            )
+            range_intensity = self.find_hex_intensity(all_range[i], case_info["case_no"])
             # print(f"Range Intensity = {range_intensity}")
             if all_ranges_indexes[i] in edge_ranges_indexes:
                 # print("in if")
@@ -397,19 +395,11 @@ class File_Operations(Range_Domain_Processing):
                     # print("inside not edge domain")
                     domain_block = np.array(not_edge_domains[j])
                     domain_block = self.convert_domain_to_4x4(domain_block)
-                    domain_intensity = self.find_hex_intensity(
-                        domain_block, case_info["case_no"]
-                    )
+                    domain_intensity = self.find_hex_intensity(domain_block, case_info["case_no"])
                     # print(f"Domain Intensity = {domain_intensity}")
-                    contrast = self.find_contrast(
-                        range_intensity, domain_intensity, case_info
-                    )
-                    brightness = self.find_brightness(
-                        range_intensity, domain_intensity, case_info, contrast
-                    )
-                    rms_error = self.find_rms_error(
-                        range_intensity, domain_intensity, contrast, brightness
-                    )
+                    contrast = self.find_contrast(range_intensity, domain_intensity, case_info)
+                    brightness = self.find_brightness(range_intensity, domain_intensity, case_info, contrast)
+                    rms_error = self.find_rms_error(range_intensity, domain_intensity, contrast, brightness)
                     # print(f"error:{rms_error}")
                     if rms_error < best_rms_error:
                         best_rms_error = rms_error

@@ -34,19 +34,27 @@ import logging as log
 # from QuadTree import create_cosine_matrix, perform_DCT, quantize, convert_domain_to_4x4
 
 PI = 3.14
-IMAGE_ROWS = 64
-IMAGE_COLS = 64
 QUALITY = 2
 RANGE_SIZE = 4
 DOMAIN_SIZE = 8
-INPUT_IMAGE = os.path.join("Input_Images", "test4.png")
-ENCODING_FILE_NAME = os.path.join("Encoding_files", "test4_weighted_32x32_trial.csv")
+
+####### TO BE CHANGED #########
+
+IMAGE_ROWS = 200
+IMAGE_COLS = 200
+INPUT_IMAGE = os.path.join("Input_Images", "android.png")
+ENCODING_FILE_NAME = os.path.join("Encoding_files", "android_200_org.csv")
+SAVE_IMAGE_AS = "decoded_android_200_org"
+
+###############################
+
 log.basicConfig(
     filename="fractal.log",
     filemode="a",
     format="%(asctime)s - %(message)s",
     level=log.INFO,
 )
+
 ##########################################
 # Read Data
 ##########################################
@@ -200,11 +208,11 @@ DCT = [[0.0] * IMAGE_COLS for i in range(IMAGE_ROWS)]
 quantum = [[0] * IMAGE_COLS for i in range(IMAGE_ROWS)]
 quantizedDCT = [[0] * IMAGE_COLS for i in range(IMAGE_ROWS)]
 
-matrix_dict = create_cosine_matrix(C, Ct)
-C = matrix_dict["C"]
-Ct = matrix_dict["Ct"]
-DCT = perform_DCT(C, Ct, input_arr)
-quantizedDCT = quantize(quantum, DCT, quantizedDCT, QUALITY)
+# matrix_dict = create_cosine_matrix(C, Ct)
+# C = matrix_dict["C"]
+# Ct = matrix_dict["Ct"]
+# DCT = perform_DCT(C, Ct, input_arr)
+# quantizedDCT = quantize(quantum, DCT, quantizedDCT, QUALITY)
 # input_arr = np.array(quantizedDCT)
 
 print(f"\n Updated input arrray: \n {input_arr}")
@@ -266,5 +274,5 @@ print(f"PSNR value = {PSNR}")
 # Save Image
 ###################################################
 
-save_image("new_weighted_dog_32x32_trial", input_arr)
+save_image(SAVE_IMAGE_AS, input_arr)
 log.info("Decoding ended")
