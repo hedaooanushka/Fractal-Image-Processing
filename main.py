@@ -17,8 +17,8 @@ IMAGE_COLS = 200
 RANGE_SIZE = 4
 DOMAIN_SIZE = 8
 IS_DCT = False
-INPUT_IMAGE = os.path.join("Input_Images", "android.png")
-ENCODING_FILE_NAME = os.path.join("Encoding_files", "android_200_org.csv")
+INPUT_IMAGE = os.path.join("Output_Images", "decoded_koala_200_org.png")
+ENCODING_FILE_NAME = os.path.join("Encoding_files", "koala_200_org_itr2.csv")
 PI = 3.14
 QUALITY = 2
 

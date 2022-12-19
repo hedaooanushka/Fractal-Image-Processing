@@ -208,9 +208,7 @@ class Range_Domain_Processing:
             sum_r += range_intensity[key]
             sum_d += domain_intensity[key]
             sum_d2 += domain_intensity[key] * domain_intensity[key]
-        s = ((case_info["hex_count"] * sum_prod) - (sum_d * sum_r)) / (
-            (case_info["hex_count"] * (sum_d2)) - sum_d2
-        )
+        s = ((case_info["hex_count"] * sum_prod) - (sum_d * sum_r)) / ((case_info["hex_count"] * (sum_d2)) - (sum_d * sum_d))
         # final rms_error results in NaN if denominator becomes 0, have to handle this
         return s
 
